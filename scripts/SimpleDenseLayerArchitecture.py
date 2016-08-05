@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import numpy as np
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, LSTM
 from keras.layers import Embedding, Flatten, TimeDistributed
 from keras.models import Model
 
@@ -20,25 +20,25 @@ class SimpleDenseLayerArchitecture(object):
         inputLayer = Input(shape = (self.CharModelPreprocessingElement.inputShape, ), dtype='int32')
         embeddingLayer = Embedding(output_dim=25, input_dim=55, 
                                    input_length=self.CharModelPreprocessingElement.inputShape)(inputLayer)
-        firstDenseLayer = TimeDistributed(Dense(100, activation='relu'))(embeddingLayer)
-        secondDenseLayer = TimeDistributed(Dense(1, activation='tanh'))(firstDenseLayer)
-        flattenSecondLayer = Flatten()(secondDenseLayer)
-        outputLayer = Dense(50, activation='linear')(flattenSecondLayer)
+        lstmLayer = LSTM(100, return_sequences=False)(embeddingLayer)
+        firstDenseLayer = (Dense(75, activation="tanh"))(lstmLayer)
+        secondDenseLayer = (Dense(50, activation="relu"))(firstDenseLayer)
+        # secondDenseLayer = Flatten()(secondDenseLayer)
+        outputLayer = Dense(50)(secondDenseLayer)
         self.model = Model(input = inputLayer, output = outputLayer)
 
     def CompileArchitecture(self):
         self.model.compile(optimizer='rmsprop',
-                           loss='mean_squared_error',
-                           metrics=['accuracy'])
+                           loss='mean_squared_error')
 
     def trainModel(self):
-        self.model.fit(self.CharModelPreprocessingElement.wordIntSequence, self.CharModelPreprocessingElement.vectors)
+        self.model.fit(self.CharModelPreprocessingElement.wordIntSequence, self.CharModelPreprocessingElement.vectors, nb_epoch=200)
 
     def saveModel(self):
         architecture = self.model.to_json()
         with open(self.outputArchitectureFile,'w') as file:
             json.dump(architecture, file)
-        self.model.save_weights(self.outputWeightsFile)
+        self.model.save_weights(self.outputWeightsFile, overwrite=True)
 
 class CharModelPreprocessing(object):
 
@@ -60,7 +60,7 @@ class CharModelPreprocessing(object):
         for index1, word in enumerate(self.words):
             for index2, character in enumerate(word[:10]):
                 try:
-                    self.wordIntSequence[index1][index2] = wordIntIndex['character']
+                    self.wordIntSequence[index1][index2] = wordIntIndex[character]
                 except:
                     pass
 
@@ -86,6 +86,8 @@ def main():
     CharModelPreprocessingElement.ConvertWordToIntSequence()
     CharModelPreprocessingElement.Shapes()
 
+    # print CharModelPreprocessingElement.wordIntSequence
+
     print "--Initiating Keras model--"
     SimpleDenseLayerArchitectureElement = SimpleDenseLayerArchitecture(CharModelPreprocessingElement, 
                                                                        outputArchitectureFile, outputWeightsFile)
@@ -97,6 +99,8 @@ def main():
 
     print "--Saving Model--"
     SimpleDenseLayerArchitectureElement.saveModel()
+
+    # print zip(SimpleDenseLayerArchitectureElement.model.predict(CharModelPreprocessingElement.wordIntSequence[:20]), CharModelPreprocessingElement.wordIntSequence[:20])
 
 if __name__=="__main__":
     main()
