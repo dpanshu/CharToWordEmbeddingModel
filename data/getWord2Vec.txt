@@ -1,0 +1,3 @@
+
+Get the word2vec file used for the script from here.
+https://drive.google.com/open?id=0B72gEs0KHzmqZ2lhLVVzX1BfeHM
